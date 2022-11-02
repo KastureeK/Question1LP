@@ -1,0 +1,82 @@
+model SmellTheCoffeeLtd
+  uses "mmxprs"
+
+
+  declarations
+
+    productName =["bronzeMix","silverMix","goldMix"]  !Declare the variable names
+    productLimit = ["arabicaBlend","robustoBlend","time","minDemandBronze","minDemandSilver","minDemandGold","requirement01",
+    "requirement02","requirement03","requirement04"]
+
+    !Declare the constraint names.
+    !requirement01:the number of units of Bronze at least 3 times the number of units of Gold;
+    !requirement02:the number of units of Bronze at most 5 times the number of units of Gold;
+    !requirement03:the number of units of Silver at least 2 times the number of units of Gold;
+    !requirement04:the number of units of Silver at most 4 times the number of units of Gold;
+
+
+    profitUnit:array(1..3)of real !Declare the profit per unit coefficient array
+    productLimitCoefficients:array(1..10,1..3)of real !Declare the product constraint array
+    productRequirement:array(1..10)of real !Declare the product requirements array
+
+
+    objective:linctr
+    variables:array(1..3) of mpvar !Declare the variables array
+    constraints:array(1..10)of linctr !Declare the constraints array
+
+  end-declarations
+  productLimitCoefficients ::[4,7,10,
+                             6,3,0,
+                             2,3,4,
+                             -1,0,0,
+                             0,-1,0,
+                             0,0,-1,
+                             -1,0,3,
+                             1,0,-5,
+                             0,-1,2,
+                             0,1,-4]
+    !Initialise the product constraint values
+    !To convert all our constraints to have the same inequality (<=), we rewrite our (>=) constraints by multiplying with -1 where needed
+    !This also interchanges the values of our sensitivity ranges lower <-> upper bound for the following constraints:
+    ! 1. Minimum demands of gold, silver and bronze
+    ! 2. respective unit limit requirements i.e. BronzeMix to be 3-5 times of GoldMix and SilverMix to be 2-4 times of GoldMix
+
+
+ profitUnit::[30,50,80] !Initialise the profit per unit values
+ productRequirement::[65000,30000,42000,-2800,-2000,-1100,0,0,0,0] !Initialise the product requirements values
+ objectiveFunction:=sum(index in 1..3)profitUnit(index) * variables(index)
+
+ forall(first_index in 1..10) !For each constraint
+ constraints(first_index):=sum(second_index in 1..3) productLimitCoefficients(first_index,second_index) * variables(second_index) <= productRequirement(first_index)
+
+ maximise(objectiveFunction) !Solve the problem, maximising the profit
+ writeln("The maximum profit that can be achieved is: ",getobjval) !Print the maximum profit (optimal solution)
+
+  forall (index in 1..3) !For each variable
+    writeln("The number of units of ",productName(index), " required are: ", getsol(variables(index))) !Print product quantities
+  writeln("")
+  writeln("The reduced costs of variables are zero if their values achieved in the optimal solution are not their lower / upper bound values.")
+  forall (index in 1..3) !For each variable
+    writeln("The reduced cost for each unit of ",productName(index), " required are: ", getrcost(variables(index))) !gives their reduced costs
+  writeln("")
+  writeln("The dual/shadow prices us with the corresponding mirrored values when constraints and variables of the primal are transposed.")
+  writeln("Below are the Duals of our constraints:")
+  forall(index in 1..10)writeln(productLimit(index),"(Dual/Shadow Price): ",getdual(constraints(index)))
+  writeln("")
+  writeln("Slack of a linear constraint provides us with co-efficients for the decision variables to remove inequality from our constraints.")
+  writeln("Below are the Slack values for our constraints:")
+  forall(index in 1..10)writeln(productLimit(index),"(Slack): ",getslack(constraints(index)))
+  writeln("")
+  writeln("Sensitivity ranges tell us the range of co-efficients within which the objective function holds true.")
+  writeln("Below are the sensitivity ranges for our constraints:")
+  forall(index in 1..10)writeln("The sensitivity range of ",productLimit(index)," is between ",getsensrng(XPRS_DN, constraints(index))," and ",getsensrng(XPRS_UP, constraints(index)))
+  writeln("")
+  writeln("Below are the sensitivity ranges for our variables:")
+  forall(index in 1..3)writeln("The sensitivity range of ",productName(index)," is between ",getsensrng(XPRS_DN, variables(index))," and ",getsensrng(XPRS_UP, variables(index)))
+  !forall(index in 1..3)writeln("The sensitivity range of the upper bound of ",productLimit(index)," is between ",getsensrng(1, variables(index))," and ",getsensrng(2, variables(index)))
+  !forall(index in 1..3)writeln("Lower sensitivity bound of ",productName(index),":",getsensrng(2, variables(index)))
+  !forall(index in 1..3)writeln("Upper sensitivity bound of ",productName(index),":",getsensrng(1, variables(index)))
+
+
+
+end-model
